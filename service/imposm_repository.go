@@ -56,8 +56,8 @@ const queryStreetsNearby = `
 `
 
 type ImposmRepository interface {
-	FindNearbyTransportPoints(location Location, radius uint, transportTypes []string) ([]NearbyPoint, error)
-	FindNearbyStreets(location Location, radius uint) ([]NearbyPoint, error)
+	FindNearbyTransportPoints(location Location, radius uint, distinct bool, transportTypes []string) ([]NearbyPoint, error)
+	FindNearbyStreets(location Location, radius uint, distinct bool) ([]NearbyPoint, error)
 }
 
 type PostGISImposmRepository struct {
@@ -68,7 +68,7 @@ func NewImposmRepository(db *sql.DB) *PostGISImposmRepository {
 	return &PostGISImposmRepository{db}
 }
 
-func (r *PostGISImposmRepository) FindNearbyTransportPoints(location Location, radius uint, transportTypes []string) ([]NearbyPoint, error) {
+func (r *PostGISImposmRepository) FindNearbyTransportPoints(location Location, radius uint, distinct bool, transportTypes []string) ([]NearbyPoint, error) {
 	//noinspection GoPreferNilSlice
 	items := []NearbyPoint{}
 
@@ -93,13 +93,26 @@ func (r *PostGISImposmRepository) FindNearbyTransportPoints(location Location, r
 			PointType: pType,
 			Distance:  distance,
 		}
-		items = append(items, *item)
+		if distinct == false {
+			items = append(items, *item)
+		} else {
+			exists := false
+			for _, i := range items {
+				if i.Name == name {
+					exists = true
+					break
+				}
+			}
+			if exists == false {
+				items = append(items, *item)
+			}
+		}
 	}
 
 	return items, nil
 }
 
-func (r *PostGISImposmRepository) FindNearbyStreets(location Location, radius uint) ([]NearbyPoint, error) {
+func (r *PostGISImposmRepository) FindNearbyStreets(location Location, radius uint, distinct bool) ([]NearbyPoint, error) {
 	//noinspection GoPreferNilSlice
 	items := []NearbyPoint{}
 
@@ -119,7 +132,20 @@ func (r *PostGISImposmRepository) FindNearbyStreets(location Location, radius ui
 			Name:     name,
 			Distance: distance,
 		}
-		items = append(items, *item)
+		if distinct == false {
+			items = append(items, *item)
+		} else {
+			exists := false
+			for _, i := range items {
+				if i.Name == name {
+					exists = true
+					break
+				}
+			}
+			if exists == false {
+				items = append(items, *item)
+			}
+		}
 	}
 
 	return items, nil
